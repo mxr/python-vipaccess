@@ -49,5 +49,8 @@ setup(
             'vipaccess=vipaccess.__main__:main',
         ],
     },
+    extras_require={
+        "qrcode": ["qrcode"],
+    },
     test_suite='nose2.collector.collector',
 )

@@ -10,6 +10,11 @@ from vipaccess.patharg import PathType
 from vipaccess.version import __version__
 from vipaccess import provision as vp
 
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
+
 EXCL_WRITE = 'x' if sys.version_info>=(3,3) else 'wx'
 TOKEN_MODEL_REFERENCE_PAGE = 'https://support.symantec.com/us/en/article.tech239895.html'
 
@@ -79,8 +84,10 @@ def provision(p, args):
                 "    The offset would be 'baked in' to the newly-created token.\n"
                 "    Fix system time and try again." % otp_token['timeskew'])
 
+    otp_uri = vp.generate_otp_uri(otp_token, otp_secret, args.issuer)
+
+    error = None
     if args.print:
-        otp_uri = vp.generate_otp_uri(otp_token, otp_secret, args.issuer)
         print('Credential created successfully:\n\t' + otp_uri)
         print("This credential expires on this date: " + otp_token['expiry'])
         print('\nYou will need the ID to register this credential: ' + otp_token['id'])
@@ -105,7 +112,16 @@ def provision(p, args):
         print('Credential created and saved successfully: ' + dotfile.name)
         print('You will need the ID to register this credential: ' + otp_token['id'])
     else:
-        p.error('Cannot currently save a token of this type (try -p to print)')
+        error = 'Cannot currently save a token of this type (try -p to print)'
+
+    if args.qrcode:
+        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L)
+        qr.add_data(otp_uri)
+        print('\nQR code to load this credential into a mobile authenticator app:', end='')
+        qr.print_ascii()
+
+    if error:
+        p.error()
 
 def check(p, args):
     if args.secret:
@@ -169,7 +185,14 @@ def uri(p, args):
         p.error('error interpreting secret as base32: %s' % e)
     if args.verbose:
         print('Token URI:\n    ', file=sys.stderr, end='')
-    print(vp.generate_otp_uri(d, key, args.issuer))
+    otp_uri = vp.generate_otp_uri(d, key, args.issuer)
+    print(otp_uri)
+
+    if args.qrcode:
+        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L)
+        qr.add_data(otp_uri)
+        print('\nQR code to load this credential into a mobile authenticator app:', end='')
+        qr.print_ascii()
 
 def show(p, args):
     if args.secret:
@@ -209,8 +232,12 @@ def main():
     pprov = sp.add_parser('provision', help='Provision a new VIP Access credential')
     pprov.set_defaults(func=provision)
     m = pprov.add_mutually_exclusive_group()
+    g = m.add_argument_group()
     m.add_argument('-p', '--print', action=UnsetDotfileAndStore, nargs=0,
                    help="Print the new credential, but don't save it to a file")
+    if qrcode:
+        pprov.add_argument('-Q', '--qrcode', action='store_true',
+                           help="Show QR code in order to load token into mobile app")
     m.add_argument('-o', '--dotfile', type=PathType(type='file', exists=False), default=os.path.expanduser('~/.vipaccess'),
                    help="File in which to store the new credential (default ~/.vipaccess)")
     pprov.add_argument('-i', '--issuer', default="VIP Access", action='store',
@@ -250,6 +277,9 @@ def main():
                        help="Specify the issuer name to use (default: Symantec)")
     puri.add_argument('-I', '--identity', action='store',
                        help="Specify the ID of the token to use (required with --secret))")
+    if qrcode:
+        puri.add_argument('-Q', '--qrcode', action='store_true',
+                          help="Show QR code in order to load token into mobile app")
     puri.add_argument('-v', '--verbose', action='store_true')
     puri.set_defaults(func=uri)
 

@@ -146,7 +146,6 @@ def test_check_TOTP_token_models():
         yield provision_valid_token, token_model, 'period', 'counter', first
         first = False
 
-
 @unittest.skipIf(IS_GITHUB_CI, reason='Network-based tests are unreliable in GitHub Actions CI')
 def test_check_HOTP_token_models():
     for token_model in ('UBHE',):

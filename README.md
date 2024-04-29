@@ -106,6 +106,7 @@ usage: vipaccess provision [-h] [-p | -o DOTFILE] [-t TOKEN_MODEL]
 optional arguments:
   -h, --help            show this help message and exit
   -p, --print           Print the new credential, but don't save it to a file
+  -Q, --qrcode          Show QR code in order to load token into mobile app
   -o DOTFILE, --dotfile DOTFILE
                         File in which to store the new credential (default
                         ~/.vipaccess)
